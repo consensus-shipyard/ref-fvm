@@ -245,13 +245,14 @@ where
     fn with_transaction(
         &mut self,
         f: impl FnOnce(&mut Self) -> Result<InvocationResult>,
+        always_revert: bool,
     ) -> Result<InvocationResult> {
         self.state_tree_mut().begin_transaction();
         self.events.begin_transaction();
         self.state_access_tracker.begin_transaction();
 
         let (revert, res) = match f(self) {
-            Ok(v) => (!v.exit_code.is_success(), Ok(v)),
+            Ok(v) => (always_revert || !v.exit_code.is_success(), Ok(v)),
             Err(e) => (true, Err(e)),
         };
 
