@@ -252,9 +252,10 @@ where
         self.state_access_tracker.begin_transaction();
 
         let (revert, res) = match f(self) {
-            Ok(v) => (always_revert || !v.exit_code.is_success(), Ok(v)),
+            Ok(v) => (!v.exit_code.is_success(), Ok(v)),
             Err(e) => (true, Err(e)),
         };
+        let revert = always_revert || revert;
 
         self.state_tree_mut().end_transaction(revert)?;
         self.events.end_transaction(revert)?;
