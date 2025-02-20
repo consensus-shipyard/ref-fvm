@@ -20,7 +20,7 @@ use crate::call_manager::Backtrace;
 use crate::trace::ExecutionTrace;
 use crate::Kernel;
 
-pub use default::{ExecutionOptions, TxnGasHook};
+pub use default::{default_gas_hook, ExecutionOptions, TxnGasHook};
 
 /// An executor executes messages on the underlying machine/kernel. It's responsible for:
 ///

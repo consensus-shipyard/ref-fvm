@@ -605,7 +605,7 @@ where
     }
 }
 
-fn default_gas_hook(
+pub fn default_gas_hook(
     sender_id: ActorID,
     _: &Receipt,
     gas_output: &GasOutputs,
