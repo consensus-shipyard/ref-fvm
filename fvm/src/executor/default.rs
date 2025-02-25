@@ -570,7 +570,7 @@ where
 
         if gas_sum != gas_cost {
             // Sanity check. This could be a fatal error.
-            return Err(anyhow!("Gas handling math is wrong"));
+            return Err(anyhow!("Txn gas fee hook invalid, expecting total {} but found {}", gas_cost, gas_sum));
         }
 
         Ok(ApplyRet {

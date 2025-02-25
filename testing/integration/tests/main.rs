@@ -10,7 +10,7 @@ use fvm::executor::ExecutionOptions;
 use fvm::executor::{ApplyKind, Executor, ThreadedExecutor};
 use fvm::machine::Machine;
 use fvm_integration_tests::dummy::DummyExterns;
-use fvm_integration_tests::tester::{Account, IntegrationExecutor, Tester};
+use fvm_integration_tests::tester::{Account, BasicExecutor, BasicTester, IntegrationExecutor, Tester};
 use fvm_ipld_blockstore::{Blockstore, MemoryBlockstore};
 use fvm_ipld_encoding::tuple::*;
 use fvm_ipld_encoding::RawBytes;
@@ -1355,18 +1355,8 @@ fn test_readonly_txn_send_ok() {
         ..Message::default()
     };
 
-    let sender_pre_balance = executor
-        .state_tree()
-        .get_actor_by_address(&sender)
-        .unwrap()
-        .unwrap()
-        .balance;
-    let receiver_pre_balance = executor
-        .state_tree()
-        .get_actor_by_address(&sender)
-        .unwrap()
-        .unwrap()
-        .balance;
+    let sender_pre_balance = address_balance(&executor, &sender);
+    let receiver_pre_balance = address_balance(&executor, &receiver);
 
     // always revert the transaction
     let always_revert = true;
@@ -1374,18 +1364,8 @@ fn test_readonly_txn_send_ok() {
         .execute_message_with_revert(message, ApplyKind::Explicit, 100, always_revert)
         .unwrap();
 
-    let sender_post_balance = executor
-        .state_tree()
-        .get_actor_by_address(&sender)
-        .unwrap()
-        .unwrap()
-        .balance;
-    let receiver_post_balance = executor
-        .state_tree()
-        .get_actor_by_address(&sender)
-        .unwrap()
-        .unwrap()
-        .balance;
+    let sender_post_balance = address_balance(&executor, &sender);
+    let receiver_post_balance = address_balance(&executor, &receiver);
 
     assert!(res.msg_receipt.exit_code.is_success());
     assert_eq!(sender_pre_balance, sender_post_balance);
@@ -1570,22 +1550,12 @@ fn test_gas_hook_send_ok() {
         ..Message::default()
     };
 
-    let sender_pre_balance = executor
-        .state_tree()
-        .get_actor_by_address(&sender)
-        .unwrap()
-        .unwrap()
-        .balance;
+    let sender_pre_balance =address_balance(&executor, &sender);
 
     let res = executor
         .execute_message(message, ApplyKind::Explicit, 100)
         .unwrap();
-    let sender_post_balance = executor
-        .state_tree()
-        .get_actor_by_address(&sender)
-        .unwrap()
-        .unwrap()
-        .balance;
+    let sender_post_balance = address_balance(&executor, &sender);
     assert!(res.msg_receipt.exit_code.is_success());
     assert!(
         sender_post_balance < sender_pre_balance - amount.clone(),
@@ -1607,12 +1577,7 @@ fn test_gas_hook_send_ok() {
         ..Message::default()
     };
 
-    let sender_pre_balance = executor
-        .state_tree()
-        .get_actor_by_address(&sender)
-        .unwrap()
-        .unwrap()
-        .balance;
+    let sender_pre_balance = address_balance(&executor, &sender);
 
     let f = |sender: ActorID, _: &Receipt, gas: &GasOutputs| {
         let GasOutputs {
@@ -1634,12 +1599,7 @@ fn test_gas_hook_send_ok() {
         .execute_message_with_options(message, ApplyKind::Explicit, 100, options)
         .unwrap();
 
-    let sender_post_balance = executor
-        .state_tree()
-        .get_actor_by_address(&sender)
-        .unwrap()
-        .unwrap()
-        .balance;
+    let sender_post_balance = address_balance(&executor, &sender);
     assert!(res.msg_receipt.exit_code.is_success());
     assert_eq!(sender_post_balance, sender_pre_balance - amount.clone());
 }
@@ -1675,4 +1635,12 @@ impl Blockstore for FailingBlockstore {
     fn put_keyed(&self, k: &Cid, block: &[u8]) -> anyhow::Result<()> {
         self.target.put_keyed(k, block)
     }
+}
+
+/// This obtains the account balance, if the address does not exist, it returns 0
+fn address_balance(executor: &BasicExecutor, addr: &Address) -> TokenAmount {
+    let Ok(Some(actor)) = executor.state_tree().get_actor_by_address(addr) else {
+        return TokenAmount::zero()
+    };
+    actor.balance
 }
